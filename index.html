@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGS Takip Sistemi</title>
+<style>
+:root{--bg:#0f0b1e;--card:#1b1533;--accent:#6c2bd9;--neon:#9d7cff;--text:#fff;--muted:#b5b5c3}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:var(--bg);color:var(--text)}
+.center{min-height:100vh;display:flex;justify-content:center;align-items:center}
+.box{background:var(--card);padding:24px;border-radius:18px;width:450px;box-shadow:0 0 25px #000}
+input,select{width:100%;padding:11px;margin-top:10px;border-radius:12px;border:none;background:#2a2450;color:white}
+.btn{width:100%;padding:13px;margin-top:14px;border:none;border-radius:14px;background:var(--accent);color:white;font-weight:bold;cursor:pointer}
+.btn:hover{box-shadow:0 0 12px var(--neon)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px;background:#120e24}
+.menu{display:flex;gap:10px}
+.menu button{background:var(--card);border:none;color:white;padding:10px 16px;border-radius:12px;cursor:pointer;transition:.3s}
+.menu button:hover{box-shadow:0 0 12px var(--neon);transform:rotateY(15deg)}
+.user{cursor:pointer;display:flex;align-items:center;gap:10px}
+.card{background:linear-gradient(145deg,#1b1533,#241c4a);border-radius:20px;padding:20px;margin:18px}
+footer{text-align:center;color:var(--muted);padding:20px}
+.hidden{display:none}
+textarea{width:100%;border-radius:12px;padding:10px;background:#2a2450;color:white;border:none;margin-top:10px}
+</style>
+</head>
+<body>
+
+<!-- GİRİŞ / KAYIT -->
+<div id="auth" class="center">
+ <div class="box">
+  <h2>👤 Giriş / Kayıt</h2>
+  <input id="luser" placeholder="Kullanıcı adı">
+  <input id="lpass" type="password" placeholder="Şifre">
+  <button class="btn" onclick="login()">Giriş Yap</button>
+  <button class="btn" onclick="showAdmin()">Admin Girişi</button>
+  <hr style="margin:12px 0">
+  <h3>Yeni kullanıcı kaydı</h3>
+  <input id="ruser" placeholder="Kullanıcı adı">
+  <input id="rpass" type="password" placeholder="Şifre">
+  <input id="rsaat" placeholder="Eve kaçta geliyorsun? (HH:MM)">
+  <input id="rkurs" placeholder="Kurs var mı? (Evet/Hayır)">
+  <button class="btn" onclick="kayitIstek()">Kayıt Ol</button>
+ </div>
+</div>
+
+<!-- ADMİN -->
+<div id="admin" class="hidden">
+ <div class="top">
+  <div class="menu">
+   <button onclick="logout()">Çıkış</button>
+  </div>
+  <div class="user">Admin</div>
+ </div>
+ <div class="card">
+  <h2>👑 Admin Paneli</h2>
+  <h3>Kayıtlı Kullanıcılar</h3>
+  <div id="users"></div>
+  <h3>Kayıt İstekleri</h3>
+  <div id="requests"></div>
+  <h3>Feedbackler</h3>
+  <div id="feedbacks"></div>
+ </div>
+</div>
+
+<!-- ANA SİTE -->
+<div id="site" class="hidden">
+ <div class="top">
+  <div class="menu">
+   <button onclick="go('program')">Program</button>
+   <button onclick="go('deneme')">Deneme</button>
+  </div>
+  <div class="user">
+   <span id="uname"></span>
+   <button class="btn" style="width:auto;padding:6px 12px" onclick="showAdmin()">Admin</button>
+  </div>
+ </div>
+
+ <div id="program" class="card">
+  <h3>📅 Günlük Program</h3>
+  <div id="kursSaat"></div>
+ </div>
+ <div id="deneme" class="card">
+  <h3>⏱ Deneme Süresi</h3>
+  <div id="timer">40:00</div>
+  <h4>Net / Doğru / Yanlış / Çözdüğün Sorular</h4>
+  <div id="netler"></div>
+ </div>
+</div>
+
+<footer>
+Teşekkürler ChatGPT 💜<br>
+<textarea id="fbtext" placeholder="Feedbackinizi buraya yazın..."></textarea>
+<button class="btn" onclick="sendFeedback()">Gönder</button>
+</footer>
+<audio id="clickSound" src="hightech-ui-mouse-click-audio-material.mp3"></audio>
+
+<script>
+const adminPass='yahyaben.47';
+let aktif=null,timer=40*60,interval=null;
+
+function clickPlay(){document.getElementById('clickSound').play()}
+document.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')clickPlay()})
+
+function kayitIstek(){
+ if(!ruser.value||!rpass.value)return alert('Boş bırakma');
+ let u=ruser.value,p=rpass.value,s=rsaat.value,k=rkurs.value;
+ localStorage.setItem('user_'+u,JSON.stringify({u,p,s,k,net:0,dogru:0,yanlis:0,cozuldu:0}));
+ alert('Kayıt tamam, şimdi giriş yapabilirsiniz');
+}
+
+function showAdmin(){
+ if(prompt('Admin şifresi')===adminPass){
+  auth.classList.add('hidden');site.classList.add('hidden');admin.classList.remove('hidden');
+  gosterAdmin();
+ } else alert('Hatalı şifre');
+}
+
+function login(){
+ let u=luser.value,p=lpass.value;
+ let data=JSON.parse(localStorage.getItem('user_'+u)||'null');
+ if(!data||data.p!==p)return alert('Hatalı bilgi');
+ aktif=u;auth.classList.add('hidden');site.classList.remove('hidden');uname.innerText=u;
+ kursSaat.innerText=`Kurs: ${data.k} | Saat: ${data.s}`;
+ netler.innerHTML=`Doğru: ${data.dogru} | Yanlış: ${data.yanlis} | Net: ${data.net} | Çözdü: ${data.cozuldu}`;
+ let kursVar=prompt('Bugün kursun var mı? (Evet/Hayır)');
+ if(kursVar.toLowerCase()==='evet')alert('Eve en fazla 16:45`te gel');
+ baslat();
+}
+
+function gosterAdmin(){
+ let keys=Object.keys(localStorage).filter(k=>k.startsWith('user_'));
+ users.innerHTML=keys.map(k=>{
+  let d=JSON.parse(localStorage.getItem(k));
+  return `<div>${d.u} | Kurs: ${d.k} | Saat: ${d.s} | Net:${d.net} | Doğru:${d.dogru} | Yanlış:${d.yanlis} | Çözdü:${d.cozuldu}</div>`;
+ }).join('');
+ requests.innerHTML='Kayıt istekleri buraya gelecek';
+ feedbacks.innerHTML=JSON.parse(localStorage.getItem('feedback')||'[]').map(f=>`<div>${f.user}: ${f.text}</div>`).join('');
+}
+
+function sendFeedback(){
+ let fb=fbtext.value;if(!fb)return;
+ let f=JSON.parse(localStorage.getItem('feedback')||'[]');
+ f.push({user:aktif||'Anonim',text:fb,date:new Date().toLocaleString()});
+ localStorage.setItem('feedback',JSON.stringify(f));
+ alert('Teşekkürler! Feedback gönderildi');
+ fbtext.value='';
+}
+
+function baslat(){interval=setInterval(()=>{timer--;timerDiv()},1000)}
+function timerDiv(){timer.innerText=`${String(Math.floor(timer/60)).padStart(2,'0')}:${String(timer%60).padStart(2,'0')}`}
+function logout(){location.reload()}
+function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}
+</script>
+</body>
+</html>
