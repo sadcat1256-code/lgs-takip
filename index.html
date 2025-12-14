@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGS Takip Sistemi</title>
+<style>
+:root{
+ --bg:#0f0b1e;--card:#1b1533;--accent:#6c2bd9;--neon:#9d7cff;
+ --text:#fff;--muted:#b5b5c3
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:var(--bg);color:var(--text)}
+.hidden{display:none}
+.center{min-height:100vh;display:flex;justify-content:center;align-items:center}
+.box{background:var(--card);padding:24px;border-radius:18px;width:340px;box-shadow:0 0 25px #000}
+input,select{width:100%;padding:11px;margin-top:10px;border-radius:12px;border:none;background:#2a2450;color:white}
+.btn{width:100%;padding:13px;margin-top:14px;border:none;border-radius:14px;background:var(--accent);color:white;font-weight:bold;cursor:pointer}
+.btn:hover{box-shadow:0 0 12px var(--neon)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px;background:#120e24}
+.menu{display:flex;gap:10px}
+.menu button{background:var(--card);border:none;color:white;padding:10px 16px;border-radius:12px;cursor:pointer;transition:.3s}
+.menu button:hover{box-shadow:0 0 12px var(--neon);transform:rotateY(15deg)}
+.user{cursor:pointer}
+.card{background:linear-gradient(145deg,#1b1533,#241c4a);border-radius:20px;padding:20px;margin:18px}
+footer{text-align:center;color:var(--muted);padding:20px}
+</style>
+</head>
+<body>
+
+<!-- KAYIT -->
+<div id="register" class="center">
+ <div class="box">
+  <h2>📝 Kayıt Ol</h2>
+  <input id="ruser" placeholder="Kullanıcı adı">
+  <input id="rpass" type="password" placeholder="Şifre">
+  <select id="rkurs"><option>Kurs var</option><option>Kurs yok</option></select>
+  <select id="rsaat"><option>15:35</option><option>16:45</option></select>
+  <button class="btn" onclick="kayitIstek()">Kayıt Ol</button>
+  <p style="text-align:center;cursor:pointer" onclick="goLogin()">Zaten hesabın var mı? Giriş yap</p>
+ </div>
+</div>
+
+<!-- GİRİŞ -->
+<div id="login" class="center hidden">
+ <div class="box">
+  <h2>👤 Giriş</h2>
+  <input id="luser" placeholder="Kullanıcı adı">
+  <input id="lpass" type="password" placeholder="Şifre">
+  <button class="btn" onclick="login()">Giriş Yap</button>
+  <button class="btn" onclick="adminGiris()">Admin</button>
+ </div>
+</div>
+
+<!-- ADMİN -->
+<div id="admin" class="center hidden">
+ <div class="box" style="width:380px">
+  <h2>👑 Admin Panel</h2>
+  <div id="istekler"></div>
+  <button class="btn" onclick="cikis()">Çıkış</button>
+ </div>
+</div>
+
+<!-- ANA SİTE -->
+<div id="site" class="hidden">
+ <div class="top">
+  <div class="menu">
+   <button onclick="go('program')">Program</button>
+   <button onclick="go('deneme')">Deneme</button>
+  </div>
+  <div class="user" id="userArea"></div>
+ </div>
+
+ <div id="program" class="card"></div>
+ <div id="deneme" class="card">
+  <h3>⏱ Deneme Süresi</h3>
+  <div id="timer">40:00</div>
+ </div>
+</div>
+
+<footer>Teşekkürler ChatGPT 💜</footer>
+
+<audio id="clickSound" src="hightech-ui-mouse-click-audio-material.mp3"></audio>
+
+<script>
+const adminPass='yahyaben.47'
+let aktif=null,wrong=0,timer=40*60,interval=null
+
+function clickPlay(){document.getElementById('clickSound').play()}
+document.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')clickPlay()})
+
+function goLogin(){register.classList.add('hidden');login.classList.remove('hidden')}
+
+function kayitIstek(){
+ if(!ruser.value||!rpass.value)return alert('Boş bırakma')
+ let arr=JSON.parse(localStorage.getItem('istekler')||'[]')
+ arr.push({u:ruser.value,p:rpass.value,k:rkurs.value,s:rsaat.value})
+ localStorage.setItem('istekler',JSON.stringify(arr))
+ alert('Kayıt isteği gönderildi')
+}
+
+function adminGiris(){
+ let p=prompt('Admin şifresi')
+ if(p!==adminPass){wrong++;return alert('Hatalı şifre')}
+ login.classList.add('hidden');admin.classList.remove('hidden')
+ gosterIstek()
+}
+
+function gosterIstek(){
+ let arr=JSON.parse(localStorage.getItem('istekler')||'[]')
+ istekler.innerHTML=arr.map((x,i)=>`
+ <div>${x.u} (${x.k}-${x.s})
+ <button onclick="kabul(${i})">Kabul</button>
+ </div>`).join('')
+}
+
+function kabul(i){
+ let arr=JSON.parse(localStorage.getItem('istekler'))
+ let u=arr.splice(i,1)[0]
+ localStorage.setItem('user_'+u.u,JSON.stringify(u))
+ localStorage.setItem('istekler',JSON.stringify(arr))
+ gosterIstek()
+}
+
+function login(){
+ let u=luser.value,p=lpass.value
+ let data=JSON.parse(localStorage.getItem('user_'+u)||'null')
+ if(!data||data.p!==p)return alert('Hatalı bilgi')
+ aktif=u
+ login.classList.add('hidden');site.classList.remove('hidden')
+ program.innerHTML=`<h3>📅 Program</h3>Eve geliş: ${data.s}<br>${data.k}`
+ baslat()
+ updateUserArea()
+}
+
+function updateUserArea(){
+ userArea.innerHTML=`👤 ${aktif} <button class='btn' style='width:auto;padding:6px 12px;margin-left:8px' onclick='logout()'>Çıkış</button>`
+}
+
+function baslat(){interval=setInterval(()=>{timer--;timerDiv()},1000)}
+function timerDiv(){timer.innerText=`${String(Math.floor(timer/60)).padStart(2,'0')}:${String(timer%60).padStart(2,'0')}`}
+function logout(){location.reload()}
+function cikis(){location.reload()}
+function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}
+</script>
+</body>
+</html>
